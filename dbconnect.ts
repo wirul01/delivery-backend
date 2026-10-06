@@ -2,9 +2,9 @@ import { createPool } from 'mysql2/promise';
 
 export const conn = createPool({
     connectionLimit: 10,
-    host: 'mysql-2f7bf9b2-msu-955b.l.aivencloud.com',
+    host: 'web-delivery-msu-955b.b.aivencloud.com',
     port: 25989,
     user: 'avnadmin',
-    password: 'AVNS_5IcOCanRSOuMTEWxtXh',
-    database: 'webadd'
+    password: 'AVNS_IRPtT4Nu0DP-wRECDj5',
+    database: 'delivery'
 });

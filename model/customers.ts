@@ -1,19 +1,18 @@
 
 
-export interface Customer {
-    customer_id: number;
-    first_name: string;
-    last_name: string;
-    phone_number: string;
-    latitude: string;
-    longitude: string;
+export interface buyer {
+    buyer_id: number;
+    fname: string;
+    lname: string;
+    contact_no: string;
+    lat_val: string;
+    lng_val: string;
 }
 
-
-export interface CostomerPostRequest {
-    first_name: string;
-    last_name: string;
-    phone_number: string;
-    latitude: string;
-    longitude: string;
+export interface buyerPostRequest {
+    fname: string;
+    lname: string;
+    contact_no: string;
+    lat_val: string;
+    lng_val: string;
 }

@@ -1,16 +1,16 @@
 
 import express from "express";
 import { conn } from "../dbconnect";
-import { CostomerPostRequest, Customer } from "../model/customers";
+import { buyerPostRequest, buyer } from "../model/customers";
 
 
 export const router = express.Router();
 
 
 router.get("/", async (req, res) => {
-    const [rows] = await conn.query("SELECT * FROM customers");
-    let customers = rows as Customer[];
-    res.json(customers);
+    const [rows] = await conn.query("SELECT * FROM buyers");
+    let buyers = rows as buyer[];
+    res.json(buyers);
 });
 
 
@@ -19,24 +19,24 @@ router.get("/search", async (req, res) => {
     try {
         const { id, name, last } = req.query;
 
-        let sql = "SELECT * FROM customers WHERE 1=1";
+        let sql = "SELECT * FROM buyers WHERE 1=1";
         const params: any[] = [];
 
         // ถ้ามีการส่ง id มา ให้บวกเงื่อนไขเพิ่ม
         if (id) {
-            sql += " AND customer_id = ?";
+            sql += " AND buyer_id = ?";
             params.push(id);
         }
 
         // ถ้ามีการส่ง name มา ค้นหาแบบ Partial Match
         if (name) {
-            sql += " AND first_name LIKE ?";
+            sql += " AND fname LIKE ?";
             params.push(`%${name}%`);
         }
 
         // ถ้ามีการส่ง last (นามสกุล) มา
         if (last) {
-            sql += " AND last_name LIKE ?";
+            sql += " AND lname LIKE ?";
             params.push(`%${last}%`);
         }
 
@@ -51,19 +51,18 @@ router.get("/search", async (req, res) => {
 //insert
 router.post("/", async (req, res) => {
     try {
-        let customer: CostomerPostRequest = req.body;
+        let buyer: buyerPostRequest = req.body;
         console.log(req.body);
 
         let sql =
-            "INSERT INTO customers (first_name,last_name, phone_number, latitude, longitude) VALUES (?,?,?,?,?)";
+            "INSERT INTO buyers (fname,lname, contact_no, lat_val, lng_val) VALUES (?,?,?,?,?)";
 
         const [result] = await conn.query(sql, [
-            customer.first_name,
-            customer.last_name,
-            customer.phone_number,
-            customer.latitude,
-            customer.longitude,
-
+            buyer.fname,
+            buyer.lname,
+            buyer.contact_no,
+            buyer.lat_val,
+            buyer.lng_val   
         ]);
 
         // แปลงผลลัพธ์เพื่อนำมาสกัดหาข้อมูลแถวที่ทำรายการสำเร็จ
@@ -85,11 +84,11 @@ router.delete("/:id", async (req, res) => {
         const id = req.params.id;
         console.log("LOG - ID ที่รับมาลบ:", id);
 
-        const [result] = await conn.query("DELETE FROM customers WHERE customer_id = ?", [id]);
+        const [result] = await conn.query("DELETE FROM buyers WHERE buyer_id = ?", [id]);
         const deleteResult = result as any;
 
         if (deleteResult.affectedRows === 0) {
-            return res.status(404).json({ error: "Customer not found" });
+            return res.status(404).json({ error: "Buyer not found" });
         }
 
         return res.status(200).json({ affected_row: deleteResult.affectedRows });
@@ -112,42 +111,42 @@ router.patch("/:id", async (req, res) => {
 
     let id = +req.params.id;
 
-    let customer: CostomerPostRequest = req.body;
+    let buyer: buyerPostRequest = req.body;
 
     let sql = conn.format(
-        "SELECT * FROM customers WHERE customer_id = ?",
+        "SELECT * FROM buyers WHERE buyer_id = ?",
         [id]
     );
 
     let [response] = await conn.query(sql);
 
-    let result = response as Customer[];
+    let result = response as buyer[];
 
     if (result.length > 0) {
 
-        let customerOriginal = result[0];
+        let buyerOriginal = result[0];
 
-        let updateCustomer = {
-            ...customerOriginal,
-            ...customer
+        let updateBuyer = {
+            ...buyerOriginal,
+            ...buyer            
         };
 
         sql = `
-            UPDATE customers
-            SET first_name = ?,
-                last_name = ?,
-                phone_number = ?,
-                latitude = ?,
-                longitude = ?
-            WHERE customer_id = ?
+            UPDATE buyers
+            SET fname = ?,
+                lname = ?,
+                contact_no = ?,
+                lat_val = ?,
+                lng_val = ?
+            WHERE buyer_id = ?
         `;
 
         sql = conn.format(sql, [
-            updateCustomer.first_name,
-            updateCustomer.last_name,
-            updateCustomer.phone_number,
-            updateCustomer.latitude,
-            updateCustomer.longitude,
+            updateBuyer.fname,
+            updateBuyer.lname,
+            updateBuyer.contact_no,
+            updateBuyer.lat_val,
+            updateBuyer.lng_val,
             id
         ]);
 
@@ -162,7 +161,7 @@ router.patch("/:id", async (req, res) => {
     } else {
 
         res.status(404).json({
-            message: "Customer not found"
+            message: "Buyer not found"
         });
     }
 });
