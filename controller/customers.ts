@@ -1,23 +1,10 @@
+
 import express from "express";
 import { conn } from "../dbconnect";
 import { CostomerPostRequest, Customer } from "../model/customers";
 
 
 export const router = express.Router();
-
-
-router.get("/search", async (req, res) => {
-    try {
-        const [rows] = await conn.query(
-            "SELECT * FROM customers WHERE (customer_id IS NULL OR customer_id = ?) OR (first_name IS NULL OR first_name LIKE ?) OR (last_name IS NULL OR last_name LIKE ?)",
-            [req.query.id, "%" + req.query.name + "%", "%" + req.query.last + "%"]
-        );
-        res.json(rows);
-    } catch (error) {
-        // ดักจับ Error กรณีทำงานผิดพลาด เพื่อไม่ให้ระบบหลังบ้านพังล่มไปดื้อๆ
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
 
 
 router.get("/", async (req, res) => {
@@ -27,6 +14,38 @@ router.get("/", async (req, res) => {
 });
 
 
+//search
+router.get("/search", async (req, res) => {
+    try {
+        const { id, name, last } = req.query;
+
+        let sql = "SELECT * FROM customers WHERE 1=1";
+        const params: any[] = [];
+
+        // ถ้ามีการส่ง id มา ให้บวกเงื่อนไขเพิ่ม
+        if (id) {
+            sql += " AND customer_id = ?";
+            params.push(id);
+        }
+
+        // ถ้ามีการส่ง name มา ค้นหาแบบ Partial Match
+        if (name) {
+            sql += " AND first_name LIKE ?";
+            params.push(`%${name}%`);
+        }
+
+        // ถ้ามีการส่ง last (นามสกุล) มา
+        if (last) {
+            sql += " AND last_name LIKE ?";
+            params.push(`%${last}%`);
+        }
+
+        const [rows] = await conn.query(sql, params);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 //insert
@@ -59,25 +78,34 @@ router.post("/", async (req, res) => {
 });
 
 
-//elete
+//delete
+
 router.delete("/:id", async (req, res) => {
     try {
-        let id = req.params.id;
+        const id = req.params.id;
+        console.log("LOG - ID ที่รับมาลบ:", id);
+
         const [result] = await conn.query("DELETE FROM customers WHERE customer_id = ?", [id]);
         const deleteResult = result as any;
 
-        // ตรวจเช็กสักนิดว่ามีแถวถูกลบจริงไหม หากไม่มีแสดงว่าไม่พบไอดีในฐานข้อมูล ส่งกลับรหัส 404
         if (deleteResult.affectedRows === 0) {
-            return res.status(404).json({ error: "customer not found" });
+            return res.status(404).json({ error: "Customer not found" });
         }
 
-        res.status(200).json({ affected_row: deleteResult.affectedRows });
-    } catch (error) {
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(200).json({ affected_row: deleteResult.affectedRows });
+    } catch (error: any) {
+        console.error("🔴 DELETE ERROR DETAILS:", error);
+
+        // เช็กถ้าติด Foreign Key Constraint (มีข้อมูลผูกอยู่ตารางอื่น)
+        if (error.errno === 1451 || error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({
+                error: "ไม่สามารถลบได้ เนื่องจากลูกค้าคนนี้มีข้อมูลเชื่อมอยู่กับตารางอื่น"
+            });
+        }
+
+        return res.status(500).json({ error: "Internal server error", details: error.message });
     }
 });
-
-
 
 //อัพเดส
 router.patch("/:id", async (req, res) => {
@@ -136,6 +164,5 @@ router.patch("/:id", async (req, res) => {
         res.status(404).json({
             message: "Customer not found"
         });
-
     }
 });
