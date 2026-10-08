@@ -1,11 +1,10 @@
 
 import express from "express";
 import { conn } from "../dbconnect";
-import { buyerPostRequest, buyer } from "../model/customers";
+import { buyerPostRequest, buyer, NearbyQueryParams } from "../model/buyers";
 
 
 export const router = express.Router();
-
 
 router.get("/", async (req, res) => {
     const [rows] = await conn.query("SELECT * FROM buyers");
@@ -13,11 +12,49 @@ router.get("/", async (req, res) => {
     res.json(buyers);
 });
 
+// GET/nearby ค้นหาลูกค้าในระยะรัศมี 
+router.get("/nearby", async (req, res) => {
+    try {
+        const lat = parseFloat(req.query.latitude as string);
+        const long = parseFloat(req.query.longitude as string);
+        // ระยะรัศมีหน่วยกิโลเมตร (ถ้าไม่ส่งมาให้ default ที่ 1.0 กม.)
+        const radiusKm = parseFloat(req.query.radius as string) || 1.0;
+
+        if (isNaN(lat) || isNaN(long)) {
+            return res.status(400).json({
+                error: "โปรดระบุพิกัด lat และ lng ให้ถูกต้องใน Query Parameters"
+            });
+        }
+
+        // สูตร Haversine คำนวณระยะทางจาก lat_val และ lng_val
+        const sql = `
+            SELECT *,
+                ( 6371 * acos(
+                    cos( radians(?) ) * cos( radians( latitude ) )
+                    * cos( radians( longitude ) - radians(?) )
+                    + sin( radians(?) ) * sin( radians( latitude ) )
+                ) ) AS distance_km
+            FROM buyers
+            HAVING distance_km <= ?
+            ORDER BY distance_km ASC
+        `;
+
+        const [rows] = await conn.query(sql, [lat, long, lat, radiusKm]);
+        const buyers = rows as (buyer & { distance_km: number })[];
+
+        res.json(buyers);
+    } catch (error: any) {
+        console.error("🔴 NEARBY SEARCH ERROR:", error);
+        res.status(500).json({ error: "Internal server error", details: error.message });
+    }
+});
+
+
 
 //search
 router.get("/search", async (req, res) => {
     try {
-        const { id, name, last } = req.query;
+        const { id, first_name, last_name } = req.query;
 
         let sql = "SELECT * FROM buyers WHERE 1=1";
         const params: any[] = [];
@@ -28,16 +65,16 @@ router.get("/search", async (req, res) => {
             params.push(id);
         }
 
-        // ถ้ามีการส่ง name มา ค้นหาแบบ Partial Match
-        if (name) {
-            sql += " AND fname LIKE ?";
-            params.push(`%${name}%`);
+        // ถ้ามีการส่ง first_name มา ค้นหาแบบ Partial Match
+        if (first_name) {
+            sql += " AND first_name LIKE ?";
+            params.push(`%${first_name}%`);
         }
 
-        // ถ้ามีการส่ง last (นามสกุล) มา
-        if (last) {
-            sql += " AND lname LIKE ?";
-            params.push(`%${last}%`);
+        // ถ้ามีการส่ง last_name (นามสกุล) มา
+        if (last_name) {
+            sql += " AND last_name LIKE ?";
+            params.push(`%${last_name}%`);
         }
 
         const [rows] = await conn.query(sql, params);
@@ -55,14 +92,14 @@ router.post("/", async (req, res) => {
         console.log(req.body);
 
         let sql =
-            "INSERT INTO buyers (fname,lname, contact_no, lat_val, lng_val) VALUES (?,?,?,?,?)";
+            "INSERT INTO buyers (first_name,last_name, phone_number, latitude, longitude) VALUES (?,?,?,?,?)";
 
         const [result] = await conn.query(sql, [
-            buyer.fname,
-            buyer.lname,
-            buyer.contact_no,
-            buyer.lat_val,
-            buyer.lng_val   
+            buyer.first_name,
+            buyer.last_name,
+            buyer.phone_number,
+            buyer.latitude,
+            buyer.longitude
         ]);
 
         // แปลงผลลัพธ์เพื่อนำมาสกัดหาข้อมูลแถวที่ทำรายการสำเร็จ
@@ -128,25 +165,25 @@ router.patch("/:id", async (req, res) => {
 
         let updateBuyer = {
             ...buyerOriginal,
-            ...buyer            
+            ...buyer
         };
 
         sql = `
             UPDATE buyers
-            SET fname = ?,
-                lname = ?,
-                contact_no = ?,
-                lat_val = ?,
-                lng_val = ?
+            SET first_name = ?,
+                last_name = ?,
+                phone_number = ?,
+                latitude = ?,
+                longitude = ?
             WHERE buyer_id = ?
         `;
 
         sql = conn.format(sql, [
-            updateBuyer.fname,
-            updateBuyer.lname,
-            updateBuyer.contact_no,
-            updateBuyer.lat_val,
-            updateBuyer.lng_val,
+            updateBuyer.first_name,
+            updateBuyer.last_name,
+            updateBuyer.phone_number,
+            updateBuyer.latitude,
+            updateBuyer.longitude,
             id
         ]);
 
@@ -165,3 +202,5 @@ router.patch("/:id", async (req, res) => {
         });
     }
 });
+
+
