@@ -109,6 +109,16 @@ router.post("/", async (req, res) => {
             last_idx: insertResult.insertId // รหัสไอดีล่าสุดที่ระบบสร้างขึ้นให้อัตโนมัติ (Auto increment id)
         });
     } catch (error) {
+        const err = error as any;
+
+        if (err.code === "ER_DUP_ENTRY") {
+            res.status(409).json({
+                error: "Phone number already exists"
+            });
+            return;
+        }
+
+        console.error(error);
         res.status(500).json({ error: "Internal server error" });
     }
 });

@@ -129,6 +129,9 @@ router.post("/", async (req: Request<{}, {}, MealOrderPostRequest>, res: Respons
     res.status(201).json({ message: "เพิ่มรายการสั่งซื้อสำเร็จ", order_id: result.insertId });
   } catch (err) {
     console.error("🔴 CREATE ORDER ERROR:", err);
+    const error = err as any;
+    if (error.code === "ER_DUP_ENTRY") {
+       res.status(409).json({ error: "Order number already exists" }); return; }
     res.status(500).json({ error: "Internal server error" });
   }
 });
