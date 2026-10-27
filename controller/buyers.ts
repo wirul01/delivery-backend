@@ -26,7 +26,7 @@ router.get("/nearby", async (req, res) => {
             });
         }
 
-        // สูตร Haversine คำนวณระยะทางจาก lat_val และ lng_val
+        // สูตร Haversine คำนวณระยะทางจาก lat และ long
         const sql = `
             SELECT *,
                 ( 6371 * acos(

@@ -118,8 +118,8 @@ router.post("/", async (req: Request<{}, {}, MealOrderPostRequest>, res: Respons
         body.target_date,
         body.quantity,
         body.selling_price,
-        body.cost_price,          // 👈 เพิ่มอันนี้ที่หายไป
-        body.delivery_latitude,   // 👈 เพิ่มอันนี้ที่หายไป
+        body.cost_price,          
+        body.delivery_latitude,   
         body.delivery_longitude,
         body.creation_type || "MANUAL",
         body.order_status || "QUEUED",
@@ -131,7 +131,7 @@ router.post("/", async (req: Request<{}, {}, MealOrderPostRequest>, res: Respons
     console.error("🔴 CREATE ORDER ERROR:", err);
     const error = err as any;
     if (error.code === "ER_DUP_ENTRY") {
-       res.status(409).json({ error: "Order number already exists" }); return; }
+      res.status(409).json({ error: "Order number already exists" }); return; }
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -175,7 +175,7 @@ router.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
   }
 });
 
-// 6. DELETE: ล้างทั้งหมด (ใช้ DELETE FROM แทน TRUNCATE)
+// 6. DELETE: ล้างทั้งหมด ใช้ DELETE FROM แทน TRUNCATE
 router.delete("/", async (req: Request, res: Response) => {
   try {
     await conn.query("DELETE FROM meal_orders");
